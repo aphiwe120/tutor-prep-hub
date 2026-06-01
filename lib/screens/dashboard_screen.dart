@@ -19,8 +19,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<LessonPlan> lessons = [];
   bool isLoading = true; 
   String selectedFilter = 'All';
-  
-  // --- NEW: Search Query State ---
   String searchQuery = '';
 
   @override
@@ -69,9 +67,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  // --- UPDATED: Helper Widget for Stats Cards ---
+  // UPDATED: We removed "Expanded" and gave it a minimum width so it never squishes!
   Widget _buildStatCard(String title, String count, IconData icon, Color color) {
-    return Expanded(
+    return Container(
+      width: 200, // Fixed minimum width
+      margin: const EdgeInsets.only(right: 16, bottom: 16),
       child: Card(
         elevation: 0,
         color: color.withOpacity(0.1),
@@ -82,23 +82,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               Icon(icon, size: 32, color: color),
               const SizedBox(width: 16),
-              // --- THE FIX ---
-              // Wrapping the Column in Expanded tells it to stay strictly inside the card!
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // We also add maxLines and overflow so long titles don't break the layout
-                    Text(
-                      title, 
-                      style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.w600),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      count, 
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color)
-                    ),
+                    Text(title, style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(count, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color)),
                   ],
                 ),
               )
@@ -111,16 +100,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // --- NEW: Advanced Filtering Logic ---
+    // --- THE RESPONSIVE MAGIC ---
+    // If the screen is wider than 800 pixels, it's a desktop. Otherwise, mobile!
+    final isDesktop = MediaQuery.of(context).size.width >= 800;
+
     final filteredLessons = lessons.where((lesson) {
-      // 1. Check if it matches the sidebar category
       final matchesFilter = selectedFilter == 'All' || lesson.subject == selectedFilter;
-      
-      // 2. Check if it matches the search bar text (ignoring uppercase/lowercase)
       final matchesSearch = searchQuery.isEmpty || 
                             lesson.title.toLowerCase().contains(searchQuery.toLowerCase()) ||
                             lesson.summary.toLowerCase().contains(searchQuery.toLowerCase());
-      
       return matchesFilter && matchesSearch;
     }).toList();
 
@@ -141,27 +129,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
           )
         ],
       ),
+      // NEW: A Drawer (Hamburger menu) that ONLY appears on mobile screens
+      drawer: isDesktop ? null : Drawer(
+        child: Sidebar(
+          selectedFilter: selectedFilter,
+          onFilterChanged: (newFilter) {
+            setState(() => selectedFilter = newFilter);
+            Navigator.pop(context); // Automatically close the drawer when you tap a subject
+          },
+        ),
+      ),
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Sidebar(
-            selectedFilter: selectedFilter,
-            onFilterChanged: (newFilter) => setState(() => selectedFilter = newFilter),
-          ),
+          // The permanent sidebar ONLY renders if we are on a desktop
+          if (isDesktop)
+            Sidebar(
+              selectedFilter: selectedFilter,
+              onFilterChanged: (newFilter) => setState(() => selectedFilter = newFilter),
+            ),
           
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.all(24.0),
+              // Slightly smaller padding on mobile so you get more screen space
+              padding: EdgeInsets.all(isDesktop ? 24.0 : 16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // --- NEW: Search Bar & Title Row ---
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  // UPDATED: Using "Wrap" allows the search bar to drop to the next line on small screens
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 16,
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       Text('$selectedFilter Lessons', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                       SizedBox(
-                        width: 300,
+                        width: isDesktop ? 300 : double.infinity, // Full width search bar on mobile
                         child: TextField(
                           onChanged: (value) => setState(() => searchQuery = value),
                           decoration: InputDecoration(
@@ -178,15 +182,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // --- NEW: Statistics Row ---
-                  Row(
-                    children: [
-                      _buildStatCard('Total Notes', '${lessons.length}', Icons.library_books, Colors.teal),
-                      const SizedBox(width: 16),
-                      _buildStatCard('Math Lessons', '${lessons.where((l) => l.subject == 'Math').length}', Icons.calculate, Colors.blue),
-                      const SizedBox(width: 16),
-                      _buildStatCard('Physics Lessons', '${lessons.where((l) => l.subject == 'Physics').length}', Icons.science, Colors.orange),
-                    ],
+                  // UPDATED: A horizontally scrollable row for stats so they never get squished
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _buildStatCard('Total Notes', '${lessons.length}', Icons.library_books, Colors.teal),
+                        _buildStatCard('Math Lessons', '${lessons.where((l) => l.subject == 'Math').length}', Icons.calculate, Colors.blue),
+                        _buildStatCard('Physics Lessons', '${lessons.where((l) => l.subject == 'Physics').length}', Icons.science, Colors.orange),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 20),
                   
@@ -197,9 +202,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   else
                     Expanded(
                       child: GridView.builder(
-                        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
                           maxCrossAxisExtent: 450, 
-                          childAspectRatio: 1.2,
+                          // A slightly taller card aspect ratio on mobile to fit the text better
+                          childAspectRatio: isDesktop ? 1.2 : 0.9,
                           crossAxisSpacing: 20,
                           mainAxisSpacing: 20,
                         ),
