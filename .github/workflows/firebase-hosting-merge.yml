@@ -1,0 +1,30 @@
+name: Deploy to Firebase Hosting on merge
+'on':
+  push:
+    branches:
+      - main # Change this to master if your default branch is master
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      # 1. Tell the GitHub runner to install Flutter
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          
+      # 2. Download packages and compile the web app
+      - name: Build Flutter Web
+        run: |
+          flutter pub get
+          flutter build web
+          
+      # 3. Take that fresh build/web folder and push it to Firebase
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TRIAGE_FRONTEND_MANAGER }}
+          channelId: live
+          projectId: triage-frontend-manager
