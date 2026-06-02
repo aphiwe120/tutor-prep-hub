@@ -28,3 +28,4 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_TRIAGE_FRONTEND_MANAGER }}
           channelId: live
           projectId: triage-frontend-manager
+          target: tutor_code

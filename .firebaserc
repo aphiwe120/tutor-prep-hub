@@ -1,5 +1,16 @@
 {
   "projects": {
-    "default": "triage-frontend-manager"
-  }
+    "default": "triage-frontend-manager",
+    "tutor-dash": "triage-frontend-manager"
+  },
+  "targets": {
+    "triage-frontend-manager": {
+      "hosting": {
+        "tutor_code": [
+          "tutor-prep"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

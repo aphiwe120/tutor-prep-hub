@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "target": "tutor_code",
     "public": "build/web",
     "ignore": [
       "firebase.json",
